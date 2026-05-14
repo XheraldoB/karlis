@@ -1,33 +1,29 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--color-brand-beige);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-brand-brown);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-brand-olive);
-}
-
+/* ---------------------------------------------------------------
+   LITHOS — Brand color palette per official Visual Identity
+   --------------------------------------------------------------- */
 @theme {
-  --color-brand-brown: #2d1912;
-  --color-brand-beige: #e6e2d6;
-  --color-brand-olive: #798C53;
-  --color-brand-teal: #1a434b;
-  --color-brand-blue: #95c2d5;
-  --color-brand-black: #111111;
+  --color-brand-brown: #2d1912;       /* primary dark brown */
+  --color-brand-brown-light: #5a3a2b; /* lighter brown */
+  --color-brand-beige: #e6e2d6;       /* page background */
+  --color-brand-beige-warm: #d9d5c9;  /* warmer beige for sections */
+  --color-brand-olive: #798C53;       /* olive green */
+  --color-brand-teal: #1d434b;        /* deep petrol (key accent) */
+  --color-brand-teal-light: #95c2d5;  /* light blue */
+  --color-brand-sage: #9bafa9;        /* sage gray-green */
   --color-brand-gray: #a3abad;
 
   --font-serif: "GFS Didot", serif;
   --font-sans: "Inter", sans-serif;
 }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--color-brand-beige); }
+::-webkit-scrollbar-thumb { background: var(--color-brand-brown); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-brand-olive); }
 
 @layer base {
   body {
@@ -39,15 +35,20 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-serif);
-    font-weight: bold;
+    font-weight: normal;
   }
 
   .font-serif {
-    font-weight: bold;
+    font-family: var(--font-serif);
+  }
+
+  .font-serif-italic {
+    font-family: var(--font-serif);
+    font-style: italic;
   }
 }
 
-/* React Day Picker Styles for Brand */
+/* React Day Picker */
 .rdp-root {
   --rdp-accent-color: var(--color-brand-olive);
   --rdp-accent-background-color: var(--color-brand-beige);
@@ -59,18 +60,16 @@
   background-color: var(--color-brand-olive) !important;
 }
 
-/* Map Overrides */
+/* Map */
 .map-tiles {
   mix-blend-mode: multiply;
   filter: sepia(0.5) hue-rotate(330deg) saturate(0.5) brightness(0.9) contrast(1.1);
   opacity: 0.8;
 }
-
 .leaflet-container {
   background: var(--color-brand-beige) !important;
   font-family: var(--font-sans);
 }
-
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   background: var(--color-brand-beige) !important;
@@ -78,9 +77,4 @@
   border-radius: 1rem;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
 }
-
-.custom-pin {
-  background: transparent;
-  border: none;
-}
-
+.custom-pin { background: transparent; border: none; }

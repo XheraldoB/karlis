@@ -1,22 +1,22 @@
 import React from 'react';
 import { motion, MotionValue, useTransform, useSpring } from 'motion/react';
 
-/**
- * ScrollAssembleLogo
- *
- * The 4 logo shapes start spread out in a horizontal row and
- * assemble into the complete logo as the user scrolls down the hero.
- *
- * Each shape lives in its own SVG (positioned absolutely inside
- * a fixed-ratio stage div). We interpolate between two keyframes
- * — "spread" and "assembled" — using plain left/top/opacity.
- */
+/* =================================================================
+   ScrollAssembleLogo
+   The 4 logo shapes start spread in a horizontal row and assemble
+   into the complete Lithos logo as the user scrolls the hero.
 
-// Logo viewBox bounds: 169,155 → 564,492  →  395 × 337
+   Each shape lives in its own SVG (absolutely positioned inside a
+   fixed-ratio stage that matches the assembled logo's aspect ratio).
+   We interpolate between two keyframes — "spread" → "assembled" —
+   using CSS left/top percentages so it scales fluidly.
+   ================================================================= */
+
+// Logo viewBox bounds: 169,155 → 564,492 ⇒ 395 × 337
 const LOGO_W = 395;
 const LOGO_H = 337;
 
-// Natural placement of each shape inside the full logo viewBox.
+// Each shape's natural placement inside the full logo viewBox
 const SHAPES = {
   home: { w: 192, h: 180, vbX: 169, vbY: 155 },
   sun:  { w: 160, h: 155, vbX: 370, vbY: 153 },
@@ -26,7 +26,7 @@ const SHAPES = {
 
 type ShapeId = keyof typeof SHAPES;
 
-// Pre-compute assembled positions in % of stage
+// Pre-compute assembled positions (% of stage)
 const assembled: Record<ShapeId, { left: number; top: number; width: number; height: number }> =
   Object.fromEntries(
     Object.entries(SHAPES).map(([k, s]) => [
@@ -40,15 +40,13 @@ const assembled: Record<ShapeId, { left: number; top: number; width: number; hei
     ])
   ) as Record<ShapeId, { left: number; top: number; width: number; height: number }>;
 
-// Spread positions: horizontal row centered vertically at 50%
+// Spread positions: horizontal row, vertically centered at midY
 const SPREAD_ORDER: ShapeId[] = ['home', 'sun', 'sea', 'bbq'];
-const GAP_PCT = 4; // gap between shapes as % of stage width
-
+const GAP_PCT = 4;
 const totalWidthPct =
   SPREAD_ORDER.reduce((sum, k) => sum + assembled[k].width, 0) +
   GAP_PCT * (SPREAD_ORDER.length - 1);
 const startLeft = 50 - totalWidthPct / 2;
-
 const spread: Record<ShapeId, { left: number; top: number }> = {} as Record<
   ShapeId,
   { left: number; top: number }
@@ -62,7 +60,6 @@ SPREAD_ORDER.forEach((k) => {
   cursor += assembled[k].width + GAP_PCT;
 });
 
-/** Convert a numeric MotionValue to a "%" string MotionValue. */
 function useToPercent(mv: MotionValue<number>): MotionValue<string> {
   return useTransform(mv, (v) => `${v}%`);
 }
@@ -74,17 +71,16 @@ export const ScrollAssembleLogo = ({
   progress: MotionValue<number>;
   className?: string;
 }) => {
-  // Smooth scroll progress
   const smooth = useSpring(progress, {
     stiffness: 40,
     damping: 18,
     restDelta: 0.001,
   });
 
-  // Assembly completes by 55% of hero scroll, leaving room to admire the logo.
+  // Assembly completes by 55% of hero scroll
   const range: [number, number] = [0, 0.55];
 
-  // Numeric MotionValues per shape (must declare hooks at top level, not in map)
+  // Numeric MotionValues per shape — hooks must be top-level
   const homeLeftNum = useTransform(smooth, range, [spread.home.left, assembled.home.left]);
   const homeTopNum  = useTransform(smooth, range, [spread.home.top,  assembled.home.top]);
   const sunLeftNum  = useTransform(smooth, range, [spread.sun.left,  assembled.sun.left]);
@@ -94,7 +90,6 @@ export const ScrollAssembleLogo = ({
   const bbqLeftNum  = useTransform(smooth, range, [spread.bbq.left,  assembled.bbq.left]);
   const bbqTopNum   = useTransform(smooth, range, [spread.bbq.top,   assembled.bbq.top]);
 
-  // Convert to "%" strings for CSS
   const homeLeft = useToPercent(homeLeftNum);
   const homeTop  = useToPercent(homeTopNum);
   const sunLeft  = useToPercent(sunLeftNum);
@@ -104,13 +99,11 @@ export const ScrollAssembleLogo = ({
   const bbqLeft  = useToPercent(bbqLeftNum);
   const bbqTop   = useToPercent(bbqTopNum);
 
-  const opacity = useTransform(smooth, range, [0.6, 1]);
-
   const baseStyle = {
     position: 'absolute' as const,
     overflow: 'visible' as const,
-    filter: 'drop-shadow(0 4px 16px rgba(45,25,18,0.18))',
-    opacity,
+    color: 'var(--color-brand-brown)',
+    fill: 'currentColor',
   };
 
   return (
@@ -127,7 +120,7 @@ export const ScrollAssembleLogo = ({
           overflow: 'visible',
         }}
       >
-        {/* HOME */}
+        {/* HOME (top-left) */}
         <motion.svg
           viewBox={`${SHAPES.home.vbX} ${SHAPES.home.vbY} ${SHAPES.home.w} ${SHAPES.home.h}`}
           fill="currentColor"
@@ -143,7 +136,7 @@ export const ScrollAssembleLogo = ({
           <polygon points="172.33 155.6 169.41 330.57 289.99 295.06 320.62 315.24 351.85 327.66 355.35 283.77 358.33 246.21 356.6 208.57 354.56 164.59 322.94 175.96 232.41 197.6 172.33 155.6" />
         </motion.svg>
 
-        {/* SUN */}
+        {/* SUN (top-right) */}
         <motion.svg
           viewBox={`${SHAPES.sun.vbX} ${SHAPES.sun.vbY} ${SHAPES.sun.w} ${SHAPES.sun.h}`}
           fill="currentColor"
@@ -159,7 +152,7 @@ export const ScrollAssembleLogo = ({
           <path d="M422.59,302.64c-39.46-16.25-60.97-60.16-48.25-100.9,9.34-29.92,34.96-56.32,100.09-42.23,130.26,28.2,35.63,157-18.43,151.53-12.43-1.26-23.59-4.36-33.4-8.4Z" />
         </motion.svg>
 
-        {/* SEA */}
+        {/* SEA (bottom-left) */}
         <motion.svg
           viewBox={`${SHAPES.sea.vbX} ${SHAPES.sea.vbY} ${SHAPES.sea.w} ${SHAPES.sea.h}`}
           fill="currentColor"
@@ -175,7 +168,7 @@ export const ScrollAssembleLogo = ({
           <path d="M348.88,491.59l-40.98-.29-5.49-.27c-17.19-1.3-44.54-3.3-70.3-19.8-7.1-4.55-14.08-10.26-20.71-17.39-48.03-51.67-41.72-92.5-41.72-92.5l48.26-10.53,98.63.23,32.21-2.26-3.24,132.98,3.34,9.84Z" />
         </motion.svg>
 
-        {/* BBQ */}
+        {/* BBQ (bottom-right) */}
         <motion.svg
           viewBox={`${SHAPES.bbq.vbX} ${SHAPES.bbq.vbY} ${SHAPES.bbq.w} ${SHAPES.bbq.h}`}
           fill="currentColor"
