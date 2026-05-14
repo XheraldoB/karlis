@@ -1,0 +1,6 @@
+{
+  "name": "Airbnb Property Showcase",
+  "description": "A website to showcase an Airbnb property, view photos, check availability, and submit booking requests.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
