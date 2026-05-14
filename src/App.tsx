@@ -8,7 +8,7 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-import { BrandMark, StoneMenuIcon, categoryIllustrations } from './components/icons';
+import { BrandMark, StoneMenuIcon, InteractiveLogo, CategoryId } from './components/icons';
 import { ScrollAssembleLogo } from './components/ScrollAssembleLogo';
 import { CookieBanner } from './components/CookieBanner';
 import { cn } from './lib/utils';
@@ -18,7 +18,7 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuState, setMenuState] = useState<'closed' | 'idle' | 'shrinking' | 'fading'>('closed');
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
-  const [activeExplore, setActiveExplore] = useState<'all'|'sea'|'mountain'|'home'|'sun'|'bbq'>('all');
+  const [activeExplore, setActiveExplore] = useState<CategoryId>('all');
   const [lang, setLang] = useState<Language>('el');
   const [showLegalModal, setShowLegalModal] = useState<'terms' | 'privacy' | null>(null);
 
@@ -33,29 +33,29 @@ export default function App() {
     offset: ['start start', 'end end'],
   });
 
-  // After logo assembles (around 55%), it should slide down and the
-  // brown navigation banner should build up from the top
-  const logoY = useTransform(heroProgress, [0.55, 0.8], ['0%', '15%']);
+  // After logo assembles (around 55%), it shrinks toward the top-left
+  // where it'll dock into the navigation bar
   const logoScale = useTransform(heroProgress, [0.55, 0.85], [1, 0.18]);
-  const logoOpacity = useTransform(heroProgress, [0.55, 0.78, 0.85], [1, 1, 0]);
+  const logoY = useTransform(heroProgress, [0.55, 0.85], ['0%', '-35%']);
+  const logoX = useTransform(heroProgress, [0.55, 0.85], ['0%', '-40%']);
+  const logoOpacity = useTransform(heroProgress, [0.55, 0.80, 0.88], [1, 1, 0]);
 
-  // The brown nav banner — invisible at start, builds up after assembly
-  const navOpacity = useTransform(heroProgress, [0.7, 0.88], [0, 1]);
-  const navHeight = useTransform(heroProgress, [0.7, 0.88], ['0%', '100%']);
+  // Brown nav banner — builds from the top after assembly
+  const navOpacity = useTransform(heroProgress, [0.7, 0.9], [0, 1]);
+  const navHeight = useTransform(heroProgress, [0.7, 0.9], ['0%', '100%']);
 
-  // Hero quote — fades in toward the end
-  const quoteOpacity = useTransform(heroProgress, [0.85, 0.95], [0, 1]);
-  const quoteY = useTransform(heroProgress, [0.85, 0.95], [30, 0]);
+  // Hero quote — fades in near the end
+  const quoteOpacity = useTransform(heroProgress, [0.85, 0.97], [0, 1]);
+  const quoteY = useTransform(heroProgress, [0.85, 0.97], [30, 0]);
 
-  // Global scroll (for the persistent header that takes over after hero)
+  // Persistent nav appears once hero is mostly past
   const [globalScrolled, setGlobalScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => {
       const heroEl = heroRef.current;
       if (!heroEl) return;
       const rect = heroEl.getBoundingClientRect();
-      // Persistent nav appears once the hero has mostly scrolled past
-      setGlobalScrolled(rect.bottom < window.innerHeight * 0.4);
+      setGlobalScrolled(rect.bottom < window.innerHeight * 0.2);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
@@ -90,44 +90,51 @@ export default function App() {
     document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Helper: render the nav bar contents (used in both the hero outro banner
+  // and the persistent post-hero nav so they look identical).
+  const NavBarContents = () => (
+    <div className="h-full px-4 md:px-8 flex justify-between items-center text-[var(--color-brand-beige)]">
+      <div className="flex items-center gap-3 cursor-pointer group" onClick={() => scrollTo('#home')}>
+        <BrandMark className="w-9 h-9 md:w-11 md:h-11 transition-transform duration-500 group-hover:scale-105" />
+        <div className="flex flex-col leading-tight">
+          <span className="font-serif text-2xl md:text-3xl">lithos</span>
+          <span className="font-sans text-[0.55rem] md:text-[0.65rem] tracking-widest uppercase opacity-80">
+            {d.guesthouse}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 md:gap-4">
+        <button
+          onClick={() => setLang(lang === 'el' ? 'en' : 'el')}
+          className="font-sans text-xs uppercase tracking-widest hover:opacity-70 transition-opacity px-2 py-1 rounded border border-[var(--color-brand-beige)]/30"
+        >
+          {lang === 'el' ? 'EN' : 'ΕΛ'}
+        </button>
+        <button onClick={openMenu} className="p-1 hover:opacity-70 transition-opacity" aria-label="menu">
+          <StoneMenuIcon className="w-8 h-8 md:w-10 md:h-10" />
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[var(--color-brand-beige)] text-[var(--color-brand-brown)] selection:bg-[var(--color-brand-olive)] selection:text-white">
 
       {/* ============================================================
-          PERSISTENT NAVIGATION
-          Appears solid AFTER hero. During hero, the hero owns the
-          visual story (logo assembly → banner build).
+          PERSISTENT NAVIGATION — appears only AFTER hero is done.
+          Hidden during the hero so it doesn't clash with the
+          in-hero nav banner animation.
           ============================================================ */}
       <motion.nav
         initial={false}
         animate={{
           opacity: globalScrolled ? 1 : 0,
-          y: globalScrolled ? 0 : -20,
           pointerEvents: globalScrolled ? 'auto' : 'none',
         }}
-        transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="fixed top-0 inset-x-0 z-40 bg-[var(--color-brand-brown)] text-[var(--color-brand-beige)] px-4 md:px-8 py-4 flex justify-between items-center shadow-sm"
+        transition={{ duration: 0.3 }}
+        className="fixed top-0 inset-x-0 z-40 bg-[var(--color-brand-brown)] h-[72px] md:h-[88px] shadow-sm"
       >
-        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => scrollTo('#home')}>
-          <BrandMark className="w-9 h-9 md:w-11 md:h-11 transition-transform duration-500 group-hover:scale-105" />
-          <div className="flex flex-col leading-tight">
-            <span className="font-serif text-2xl md:text-3xl">lithos</span>
-            <span className="font-sans text-[0.55rem] md:text-[0.65rem] tracking-widest uppercase opacity-80">
-              {d.guesthouse}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 md:gap-4">
-          <button
-            onClick={() => setLang(lang === 'el' ? 'en' : 'el')}
-            className="font-sans text-xs uppercase tracking-widest hover:opacity-70 transition-opacity px-2 py-1 rounded border border-[var(--color-brand-beige)]/30"
-          >
-            {lang === 'el' ? 'EN' : 'ΕΛ'}
-          </button>
-          <button onClick={openMenu} className="p-1 hover:opacity-70 transition-opacity">
-            <StoneMenuIcon className="w-8 h-8 md:w-10 md:h-10" />
-          </button>
-        </div>
+        <NavBarContents />
       </motion.nav>
 
       {/* ============================================================
@@ -201,8 +208,10 @@ export default function App() {
         {/* ============================================================
             HERO — 3-act narrative driven by scroll:
               Act 1 (0%–55%):  4 shapes assemble horizontally → into logo
-              Act 2 (55%–85%): assembled logo glides down + shrinks
-              Act 3 (85%+):    brown nav banner builds up from the top
+              Act 2 (55%–85%): assembled logo shrinks + glides toward
+                                top-left (dock position)
+              Act 3 (70%–95%): brown nav banner builds from the top,
+                                hero quote fades in
             ============================================================ */}
         <section id="home" ref={heroRef} className="relative h-[300vh]">
           <div className="sticky top-0 h-screen w-full overflow-hidden bg-[var(--color-brand-beige)]">
@@ -215,53 +224,38 @@ export default function App() {
             />
             <div className="absolute inset-0 bg-[var(--color-brand-beige)]/75 z-10" />
 
-            {/* The animated brown nav banner — builds from top */}
+            {/* The brown nav banner — builds from top during Act 3 */}
             <motion.div
               style={{ height: navHeight, opacity: navOpacity }}
               className="absolute top-0 inset-x-0 z-30 bg-[var(--color-brand-brown)] overflow-hidden"
             >
-              <div className="h-[88px] md:h-[96px] px-4 md:px-8 flex justify-between items-center text-[var(--color-brand-beige)]">
-                <div className="flex items-center gap-3">
-                  <BrandMark className="w-9 h-9 md:w-11 md:h-11" />
-                  <div className="flex flex-col leading-tight">
-                    <span className="font-serif text-2xl md:text-3xl">lithos</span>
-                    <span className="font-sans text-[0.55rem] md:text-[0.65rem] tracking-widest uppercase opacity-80">
-                      {d.guesthouse}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 md:gap-4">
-                  <span className="font-sans text-xs uppercase tracking-widest px-2 py-1 rounded border border-[var(--color-brand-beige)]/30">
-                    {lang === 'el' ? 'EN' : 'ΕΛ'}
-                  </span>
-                  <StoneMenuIcon className="w-8 h-8 md:w-10 md:h-10" />
-                </div>
+              <div className="h-[72px] md:h-[88px] w-full">
+                <NavBarContents />
               </div>
             </motion.div>
 
-            {/* Assembling logo (always vertically centered in hero) */}
+            {/* Assembling logo (Acts 1+2). After assembly, it shrinks and
+                moves toward the nav slot in the top-left.
+                Note: max-w is much smaller on mobile so spread shapes
+                don't overflow the screen at scroll=0. */}
             <motion.div
-              style={{
-                y: logoY,
-                scale: logoScale,
-                opacity: logoOpacity,
-              }}
+              style={{ y: logoY, x: logoX, scale: logoScale, opacity: logoOpacity }}
               className="relative z-20 h-full w-full flex items-center justify-center px-6"
             >
               <ScrollAssembleLogo
                 progress={heroProgress}
-                className="w-full max-w-3xl text-[var(--color-brand-brown)]"
+                className="w-[70%] sm:w-[60%] md:w-[55%] max-w-[640px] text-[var(--color-brand-brown)]"
               />
             </motion.div>
 
-            {/* Hero quote — appears once assembly is done */}
+            {/* Hero quote — anchored inside the sticky hero so it never
+                bleeds into the next section. Kept low in the viewport
+                but bounded by the hero's bottom edge. */}
             <motion.div
               style={{ opacity: quoteOpacity, y: quoteY }}
-              className="absolute bottom-[12vh] md:bottom-[14vh] inset-x-0 text-center px-4 z-25"
+              className="absolute bottom-[8vh] sm:bottom-[10vh] md:bottom-[12vh] inset-x-0 text-center px-4 z-25 pointer-events-none"
             >
-              <h1
-                className="font-serif italic text-3xl sm:text-5xl md:text-6xl text-[var(--color-brand-brown)] max-w-4xl mx-auto leading-tight"
-              >
+              <h1 className="font-serif italic text-2xl sm:text-4xl md:text-6xl text-[var(--color-brand-brown)] max-w-4xl mx-auto leading-tight">
                 "{lang === 'el' ? 'τόπος συνάντησης' : 'a meeting point'}
                 <br />
                 {lang === 'el' ? 'κάθε καλοκαίρι' : 'every summer'}"
@@ -271,7 +265,7 @@ export default function App() {
         </section>
 
         {/* ============================================================
-            PHILOSOPHY — illustrated categories (per designer PDF)
+            PHILOSOPHY — InteractiveLogo + category list
             ============================================================ */}
         <PhilosophySection lang={lang} d={d} activeExplore={activeExplore} setActiveExplore={setActiveExplore} />
 
@@ -351,7 +345,7 @@ export default function App() {
         </section>
 
         {/* ============================================================
-            GALLERY — staircase scroll-in (per designer PDF page 17)
+            GALLERY — Staircase scroll-in (per designer PDF page 17)
             ============================================================ */}
         <GallerySection title={d.galleryTitle} />
 
@@ -419,11 +413,22 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        {/* Developer credit (bottom strip) */}
+        <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-[var(--color-brand-beige)]/15 flex flex-col md:flex-row items-center justify-between gap-3 text-xs font-sans opacity-50">
+          <span>
+            Designed & developed by{' '}
+            <span className="font-serif italic text-base">Xheraldo Bilo</span>
+          </span>
+          <span className="opacity-80">
+            {/* When ready, replace with: <a href="https://xheraldo.dev">xheraldo.dev</a> */}
+            xheraldo.dev
+          </span>
+        </div>
       </footer>
 
       <CookieBanner />
 
-      {/* Legal Modal */}
       <AnimatePresence>
         {showLegalModal && (
           <LegalModal
@@ -438,17 +443,18 @@ export default function App() {
 }
 
 /* ===================================================================
-   PHILOSOPHY SECTION
-   Per designer PDF (pages 6–7): each category has its own
-   illustrated icon — boat for sea, mountains for mountain, etc.
+   PHILOSOPHY SECTION — Interactive Logo + Category List
+   The logo is the single visual centerpiece. Hovering or clicking
+   a category highlights that specific shape inside the logo in
+   petrol, and shows the description/activities for that category.
    =================================================================== */
 function PhilosophySection({
   lang, d, activeExplore, setActiveExplore,
 }: {
   lang: Language;
   d: typeof t['el'];
-  activeExplore: 'all' | 'sea' | 'mountain' | 'home' | 'sun' | 'bbq';
-  setActiveExplore: (v: 'all' | 'sea' | 'mountain' | 'home' | 'sun' | 'bbq') => void;
+  activeExplore: CategoryId;
+  setActiveExplore: (v: CategoryId) => void;
 }) {
   return (
     <section id="explore" className="py-24 md:py-32 px-6 md:px-12 lg:px-24">
@@ -462,61 +468,91 @@ function PhilosophySection({
           </p>
         </div>
 
-        {/* Category grid — illustrated cards */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
-          {d.exploreItems.map((cat) => {
-            const Illustration = categoryIllustrations[cat.id];
-            const isActive = activeExplore === cat.id;
-            return (
-              <motion.div
-                key={cat.id}
-                layout
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-80px' }}
-                transition={{ duration: 0.6 }}
-                onClick={() => setActiveExplore(isActive ? 'all' : (cat.id as any))}
-                className={cn(
-                  'relative p-8 rounded-2xl cursor-pointer transition-all duration-500 border',
-                  isActive
-                    ? 'bg-white/60 border-[var(--color-brand-brown)]/15 shadow-md'
-                    : 'bg-transparent border-transparent hover:bg-white/30'
-                )}
-              >
-                <div className="flex justify-center mb-6">
-                  {Illustration && (
-                    <Illustration className="w-32 h-32 md:w-40 md:h-40 drop-shadow-sm" />
+        <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
+          {/* Left: Interactive logo */}
+          <div className="order-2 lg:order-1 flex justify-center">
+            <InteractiveLogo
+              activePart={activeExplore}
+              onPartHover={(p) => setActiveExplore(p)}
+              onPartClick={(p) => setActiveExplore(p === activeExplore ? 'all' : p)}
+              className="w-full max-w-[320px] md:max-w-[420px] h-auto drop-shadow-sm transition-transform duration-500 hover:scale-[1.02]"
+            />
+          </div>
+
+          {/* Right: Category list */}
+          <div
+            className="order-1 lg:order-2 flex flex-col gap-4"
+            onMouseLeave={() => setActiveExplore('all')}
+          >
+            {d.exploreItems.map((cat) => {
+              const isActive = activeExplore === cat.id;
+              return (
+                <motion.div
+                  layout
+                  key={cat.id}
+                  onMouseEnter={() => setActiveExplore(cat.id as CategoryId)}
+                  onClick={() => setActiveExplore(isActive ? 'all' : (cat.id as CategoryId))}
+                  className={cn(
+                    'relative p-6 md:p-7 transition-all duration-500 cursor-pointer rounded-2xl border',
+                    isActive
+                      ? 'bg-white/60 border-[var(--color-brand-brown)]/10 shadow-sm'
+                      : 'bg-transparent border-transparent opacity-60 hover:opacity-100 hover:bg-white/20'
                   )}
-                </div>
-                <h3 className="font-serif italic text-3xl mb-4 text-center text-[var(--color-brand-brown)]">
-                  {cat.title}
-                </h3>
-                <p className="font-sans text-sm md:text-base opacity-80 leading-relaxed text-center">
-                  {cat.description}
-                </p>
-                <AnimatePresence>
-                  {isActive && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                      animate={{ height: 'auto', opacity: 1, marginTop: 24 }}
-                      exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                      transition={{ duration: 0.4 }}
-                      className="overflow-hidden"
+                >
+                  <motion.div layout className="relative z-10">
+                    <motion.h3
+                      layout
+                      className="font-serif italic text-2xl md:text-3xl flex items-center gap-6"
                     >
-                      <div className="grid grid-cols-2 gap-y-2 gap-x-4 pt-4 border-t border-[var(--color-brand-brown)]/15">
-                        {cat.activities.map((a, idx) => (
-                          <div key={idx} className="flex items-center gap-2 font-sans text-xs md:text-sm opacity-80">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-brand-teal)]" />
-                            <span>{a}</span>
+                      <span
+                        className={cn(
+                          'transition-colors duration-500',
+                          isActive ? 'text-[var(--color-brand-teal)]' : 'text-[var(--color-brand-brown)]'
+                        )}
+                      >
+                        {cat.title}
+                      </span>
+                      <div
+                        className={cn(
+                          'h-px transition-all duration-500',
+                          isActive
+                            ? 'flex-1 bg-[var(--color-brand-teal)]/40'
+                            : 'w-12 bg-[var(--color-brand-brown)]/20'
+                        )}
+                      />
+                    </motion.h3>
+
+                    <AnimatePresence>
+                      {isActive && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                          animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
+                          exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                          transition={{ duration: 0.45, ease: 'easeInOut' }}
+                          className="overflow-hidden"
+                        >
+                          <p className="font-sans text-base md:text-lg opacity-85 leading-relaxed mb-4">
+                            {cat.description}
+                          </p>
+                          <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                            {cat.activities.map((a, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-2 font-sans text-sm opacity-80"
+                              >
+                                <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-brand-teal)]" />
+                                <span>{a}</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            );
-          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>
@@ -525,7 +561,6 @@ function PhilosophySection({
 
 /* ===================================================================
    GALLERY — Staircase scroll animation (per designer PDF page 17)
-   Photos appear one-by-one with vertical offset, like a staircase.
    =================================================================== */
 function GallerySection({ title }: { title: string }) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -543,10 +578,11 @@ function GallerySection({ title }: { title: string }) {
     'https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=1200&q=80',
   ];
 
-  // Staircase pattern: each image offset down from the previous one.
-  // 4 columns; each subsequent image steps down by a fraction of its height.
   return (
-    <section id="gallery" className="py-24 md:py-32 px-4 md:px-12 lg:px-24 bg-[var(--color-brand-brown)] text-[var(--color-brand-beige)]">
+    <section
+      id="gallery"
+      className="py-24 md:py-32 px-4 md:px-12 lg:px-24 bg-[var(--color-brand-brown)] text-[var(--color-brand-beige)]"
+    >
       <div className="max-w-7xl mx-auto">
         <h2 className="font-serif italic text-5xl md:text-7xl mb-16 md:mb-24 text-center">{title}</h2>
 
@@ -554,7 +590,7 @@ function GallerySection({ title }: { title: string }) {
         <div className="hidden md:grid grid-cols-4 gap-6 lg:gap-8">
           {images.map((src, i) => {
             const colIdx = i % 4;
-            const offsetTop = colIdx * 60; // staircase step
+            const offsetTop = colIdx * 60;
             return (
               <motion.div
                 key={i}
@@ -576,7 +612,7 @@ function GallerySection({ title }: { title: string }) {
           })}
         </div>
 
-        {/* Mobile: simple 2-col grid */}
+        {/* Mobile */}
         <div className="md:hidden grid grid-cols-2 gap-3">
           {images.slice(0, 8).map((src, i) => (
             <motion.div
@@ -594,7 +630,6 @@ function GallerySection({ title }: { title: string }) {
         </div>
       </div>
 
-      {/* Lightbox */}
       <AnimatePresence>
         {selectedImage && (
           <motion.div
@@ -792,19 +827,38 @@ function LocationSection({ d }: { d: typeof t['el'] }) {
   const position: [number, number] = [38.5414, 24.1245];
   const googleMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=Οκτωνιά+Εύβοιας';
 
+  // On touch devices, single-finger drag should scroll the page,
+  // not the map. Two-finger drag pans the map.
+  // Leaflet supports this via "dragging: false + touchZoom: 'center'"
+  // BUT we still want users to interact, so we enable map dragging
+  // only after they tap once (toggle). We also gate with a desktop check.
+  const [mapInteractive, setMapInteractive] = React.useState(false);
+  const isTouch = typeof window !== 'undefined' &&
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
   return (
     <section id="location" className="py-24 px-6 md:px-24 bg-[var(--color-brand-beige)]">
       <div className="max-w-7xl mx-auto flex flex-col items-center">
         <h2 className="font-serif italic text-5xl md:text-7xl mb-8 text-center">{d.locationTitle}</h2>
         <p className="font-sans text-lg md:text-xl opacity-80 text-center max-w-2xl mb-12">{d.locationText}</p>
 
-        <div className="w-full relative rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl border-4 border-white/40" style={{ height: '600px' }}>
+        <div
+          className="w-full relative rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl border-4 border-white/40"
+          style={{ height: '600px' }}
+        >
           <div className="absolute inset-0 pointer-events-none z-10 shadow-[inset_0_0_100px_rgba(0,0,0,0.15)] bg-gradient-to-tr from-[rgba(255,250,240,0.1)] to-transparent" />
+
           <MapContainer
             center={position}
             zoom={13}
             scrollWheelZoom={false}
             zoomControl={false}
+            // On touch devices, dragging is OFF by default and toggled via tap.
+            // On desktop, mouse dragging is always enabled.
+            dragging={!isTouch || mapInteractive}
+            // Two-finger touch pan: enabled when interactive, otherwise off.
+            touchZoom={mapInteractive ? 'center' : false}
+            doubleClickZoom={mapInteractive}
             className="w-full h-full relative z-0 bg-[#e4e1d7]"
           >
             <TileLayer
@@ -814,6 +868,33 @@ function LocationSection({ d }: { d: typeof t['el'] }) {
             />
             <Marker position={position} icon={customIcon} />
           </MapContainer>
+
+          {/* Tap-to-activate overlay (mobile only).
+              While inactive, this transparent layer captures taps so
+              the page can scroll naturally over the map. Tapping
+              activates map dragging; tapping outside the map (or
+              scrolling past it) won't deactivate — we keep it simple. */}
+          {isTouch && !mapInteractive && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setMapInteractive(true); }}
+              className="md:hidden absolute inset-0 z-20 flex items-center justify-center bg-[var(--color-brand-brown)]/15 backdrop-blur-[1px] transition-opacity"
+              aria-label="Ενεργοποίηση χάρτη"
+            >
+              <span className="bg-[var(--color-brand-brown)]/90 text-[var(--color-brand-beige)] px-5 py-3 rounded-full font-sans text-sm shadow-lg">
+                {d.tapToActivateMap ?? 'Πατήστε για ενεργοποίηση χάρτη'}
+              </span>
+            </button>
+          )}
+
+          {/* Disable button — visible only while map is interactive on mobile */}
+          {isTouch && mapInteractive && (
+            <button
+              onClick={() => setMapInteractive(false)}
+              className="md:hidden absolute top-4 right-4 z-[401] bg-[var(--color-brand-brown)]/90 text-[var(--color-brand-beige)] px-3 py-2 rounded-full font-sans text-xs shadow-lg"
+            >
+              {d.lockMap ?? 'Κλείδωμα χάρτη'}
+            </button>
+          )}
 
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[400]">
             <a
@@ -833,7 +914,7 @@ function LocationSection({ d }: { d: typeof t['el'] }) {
 }
 
 /* ===================================================================
-   LEGAL MODAL — Terms of Use / Privacy Policy
+   LEGAL MODAL
    =================================================================== */
 function LegalModal({ kind, lang, onClose }: { kind: 'terms' | 'privacy'; lang: Language; onClose: () => void }) {
   const isEl = lang === 'el';

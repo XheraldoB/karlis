@@ -41,8 +41,10 @@ const assembled: Record<ShapeId, { left: number; top: number; width: number; hei
   ) as Record<ShapeId, { left: number; top: number; width: number; height: number }>;
 
 // Spread positions: horizontal row, vertically centered at midY
+// GAP_PCT controls how much horizontal breathing room each shape has
+// at scroll=0. Lower = shapes start closer together (good for mobile).
 const SPREAD_ORDER: ShapeId[] = ['home', 'sun', 'sea', 'bbq'];
-const GAP_PCT = 4;
+const GAP_PCT = 1.5;
 const totalWidthPct =
   SPREAD_ORDER.reduce((sum, k) => sum + assembled[k].width, 0) +
   GAP_PCT * (SPREAD_ORDER.length - 1);
